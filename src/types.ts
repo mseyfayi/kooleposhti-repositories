@@ -9,3 +9,7 @@ export interface Category {
   title: string;
   tags: Array<Tag>;
 }
+
+export type Post = {
+  repoUrl: string;
+};

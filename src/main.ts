@@ -1,9 +1,8 @@
 import { Octokit } from 'octokit';
 import { createAppAuth } from '@octokit/auth-app';
-import { appId, clientId, installationId, privateKey, clientSecret, appName, repoOptions } from './constants';
-import { evalIssue, getIssueNumber } from './utils';
-import { getCategories } from './fetches';
-import { Category } from './types';
+import { appId, clientId, clientSecret, installationId, privateKey, repoOptions } from './constants';
+import { closeIssue, createComment, evalIssue, getIssueNumber } from './utils';
+import { createPost } from './fetches';
 
 const octokit = new Octokit({
   authStrategy: createAppAuth,
@@ -17,25 +16,26 @@ const octokit = new Octokit({
 });
 
 const main = async () => {
-  const categories = await getCategories();
+  try {
+    const list = await octokit.rest.issues.listForRepo({
+      ...repoOptions,
+    });
 
-  const {
-    data: { token: accessToken },
-  } = await octokit.rest.apps.createInstallationAccessToken({
-    installation_id: installationId,
-  });
-
-  const remoteUrl = `https://${appName}:${accessToken}@github.com/${repoOptions.owner}/${repoOptions.repo}`;
-
-  const list = await octokit.rest.issues.listForRepo({
-    ...repoOptions,
-  });
-
-  list.data.forEach((item) => {
-    const issueNumber = getIssueNumber(item.url);
-    const evals = evalIssue(item.body, categories as Array<Category>);
-    console.log(evals);
-  });
+    for (const item of list.data) {
+      const issueNumber = getIssueNumber(item.url);
+      const evals = evalIssue(item.body);
+      console.log(evals);
+      if (!evals || !evals.link) {
+        await createComment(octokit, 'Pattern is not followed', Number(issueNumber));
+      } else {
+        await createPost({ repoUrl: evals.link });
+        await createComment(octokit, 'Post created', Number(issueNumber));
+      }
+      await closeIssue(octokit, Number(issueNumber));
+    }
+  } catch (e) {
+    console.log('Error', e);
+  }
 };
 
 main();
