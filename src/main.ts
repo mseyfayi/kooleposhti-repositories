@@ -3,6 +3,7 @@ import { createAppAuth } from '@octokit/auth-app';
 import { appId, clientId, clientSecret, installationId, privateKey, repoOptions } from './constants';
 import { closeIssue, createComment, evalIssue, getIssueNumber } from './utils';
 import { createPost } from './fetches';
+import schedule from 'node-schedule';
 
 const octokit = new Octokit({
   authStrategy: createAppAuth,
@@ -38,4 +39,6 @@ const main = async () => {
   }
 };
 
-main();
+schedule.scheduleJob('* * 0 * *', () => {
+  main();
+});
